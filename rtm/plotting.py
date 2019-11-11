@@ -15,14 +15,8 @@ import pygmt
 with pygmt.clib.Session() as session:
     session.call_module('gmtset', 'FONT=12p')
 
-# PyGMT plot width
-WIDTH = 8  # [inches]
-
 # Marker size for PyGMT
 SYMBOL_SIZE = 0.1  # [inches]
-
-# Amount to shift title newlines by (works with with 12p font)
-TITLE_DY = 0.2  # [inches]
 
 # Fraction of total map extent (width) to use for scalebar
 SCALE_FRAC = 1/10
@@ -59,7 +53,7 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     st = processed_st.copy()
 
     # Get coordinates of stack maximum in (latitude, longitude)
-    time_max, y_max, x_max, peaks, props = get_peak_coordinates(S, unproject=S.UTM)
+    time_max, y_max, x_max, peaks, props = get_peak_coordinates(S)
 
     # In either case, we convert from UTCDateTime to np.datetime64
     if time_slice:
@@ -68,8 +62,14 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         time_to_plot = np.datetime64(time_max)
 
     slice = S.sel(time=time_to_plot, method='nearest')
+    slice.data[slice.data == 0] = np.nan  # Replace zeros with NaN
 
     fig = pygmt.Figure()
+
+    if S.UTM:
+        plot_width = 5  # [inches]
+    else:
+        plot_width = 8  # [inches]
 
     # Define coordinates of stations
     if S.UTM:
@@ -90,45 +90,75 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         # Rescale from 0-360 degrees
         xmin = (np.hstack([sta_x, S.x.min()]) % 360).min()
         xmax = (np.hstack([sta_x, S.x.max()]) % 360).max()
+        buffer = 0  # [deg.]
     else:
         xmin = np.hstack([sta_x, S.x.min()]).min()
         xmax = np.hstack([sta_x, S.x.max()]).max()
+        buffer = 100  # [m]
     ymin = np.hstack([sta_y, S.y.min()]).min()
     ymax = np.hstack([sta_y, S.y.max()]).max()
 
-    region = [np.floor(xmin), np.ceil(xmax), np.floor(ymin), np.ceil(ymax)]
+    region = [np.floor(xmin - buffer), np.ceil(xmax + buffer),
+              np.floor(ymin - buffer), np.ceil(ymax + buffer)]
 
     if S.UTM:
         # Just Cartesian
-        proj = f'X{WIDTH}i/0'
-        # [m] Rounded to nearest 50 m
-        scale_length = np.round((region[1] - region[0]) * SCALE_FRAC / 50) * 50
+        proj = f'X{plot_width}i/0'
+        # [m] Rounded to nearest `nearest` m
+        nearest = 100
+        scale_length = np.round((region[1] - region[0]) * SCALE_FRAC / nearest) * nearest
 
     else:
         # This is a good projection to use since it preserves area
         proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
                                          np.mean(region[2:4]),
                                          region[2], region[3],
-                                         WIDTH)
-        # [km] Rounded to nearest 200 km
-        scale_length = np.round(((region[1] - region[0]) * SCALE_FRAC * DEG2KM) / 200) * 200
+                                         plot_width)
+        # [km] Rounded to nearest `nearest` km
+        nearest = 200
+        scale_length = np.round(((region[1] - region[0]) * SCALE_FRAC * DEG2KM) / nearest) * nearest
 
-    # cs = dem.plot.contour(ax=ax, colors='k', levels=50, zorder=-1,
-    #                       linewidths=0.3)
-    # ax.clabel(cs, cs.levels[::2], fontsize=9, fmt='%d', inline=True)
-    #
+    # Add title
+    title = f'Time: {UTCDateTime(slice.time.values.astype(str)).datetime}'
 
-    fig.basemap(projection=proj, region=region, frame='af')
+    # Add celerity info if applicable
+    if hasattr(S, 'celerity'):
+        title = title + f'    Celerity: {S.celerity:g} m/s'
 
+    # Label as global max if applicable
+    if slice.time.values == time_max:
+        title = 'GLOBAL MAXIMUM    ' + title
+
+    fig.basemap(projection=proj, region=region, frame=['af', f'+t"{title}"'])
+    if S.UTM:
+        fig.basemap(frame=['SW', 'xa+l"UTM Easting (m)"',
+                                 'ya+l"UTM Northing (m)"' ])
+
+    # If unprojected plot, draw coastlines
     if not S.UTM:
         fig.coast(A='100+l', water='lightblue', land='lightgrey',
                   shorelines=True)
 
+    if S.UTM:
+        transp = 20  # [%]
+    else:
+        transp = 30  # [%]
     with pygmt.clib.Session() as session:
         with session.virtualfile_from_grid(slice) as grid_file:
-            session.call_module('grdview', f'{grid_file} -Cinferno -T+s -t30')
-    fig.colorbar(position=f'JCB+o0/0.5i+h+w{WIDTH * 0.75}i/0.15i',
-                 frame=['a', 'x+l"Stack amplitude"'])
+            session.call_module('grdview', f'{grid_file} -Cinferno -T+s -t{transp}')
+
+    # Make colorbar
+    if S.UTM:
+        # Ensure colorbar height equals map height
+        aspect_ratio = (region[3] - region[2]) / (region[1] - region[0])
+        position=f'JMR+o1.2i/0+w{plot_width * aspect_ratio}i/0.15i'
+    else:
+        position=f'JCB+o0/0.5i+h+w{plot_width * 0.75}i/0.15i'
+    fig.colorbar(position=position, frame=['a', 'x+l"Stack amplitude"'])
+
+    # If projected plot and a DEM is provided, draw contours
+    if S.UTM and dem is not None:
+        fig.grdcontour(dem, interval=10, annotation='50+u" m"')  # Assumes meters!
 
     # Plot the center of the grid
     if S.UTM:
@@ -157,35 +187,17 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     if label_stations:
         for x, y, tr in zip(sta_x, sta_y, processed_st):
             fig.text(x=x, y=y, text=f'{tr.stats.network}.{tr.stats.station}',
-                     font='8p,white=~0.8p', justify='LM', D='0.1i/0')
+                     font='10p,white=~1p', justify='LM', D='0.1i/0')
 
     # Add legend
-    fig.legend(position='JTL+jTL', box='+gwhite+p1p')
+    fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
 
     # Add scalebar (valid in center of map)
     if S.UTM:
-        fig.basemap(L='JBR+jBR+o1i+lm+w{}'.format(scale_length))
+        fig.basemap(L='JBR+jBR+o0.5i+lm+w{}'.format(scale_length))
     else:
         fig.basemap(L='JBR+jBR+o1i+f+l+w{}k+c{}/{}'.format(scale_length,
                                                            *S.grid_center))
-
-    # Add title
-    title = f'Time: {UTCDateTime(slice.time.values.astype(str)).datetime}'
-    fig.basemap(frame=f'+t"{title}"')
-
-    # Add celerity info if present
-    if hasattr(S, 'celerity'):
-        # Move basemap down and plot another title
-        fig.basemap(Y=f'-{TITLE_DY}i',
-                    frame=f'+t"Celerity: {S.celerity:g} m/s"')
-
-    # Label global maximum if applicable
-    if slice.time.values == time_max:
-        if hasattr(S, 'celerity'):
-            dy = TITLE_DY * 2  # Since we already moved the plot down
-        else:
-            dy = TITLE_DY
-        fig.basemap(Y=f'{dy}i', frame=f'+t"GLOBAL MAXIMUM"')
 
     fig.show(method='external')
 
