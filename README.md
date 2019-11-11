@@ -24,14 +24,17 @@ Installation
 
 It's recommended that you install this package into a new
 [conda](https://docs.conda.io/projects/conda/en/latest/index.html) environment
-containing all of the packages listed in the [Dependencies](#dependencies) section.
+containing all of the packages listed in the [Dependencies](#dependencies)
+section.
 
-To create a new conda environment for use with _rtm_, execute the following terminal command:
+To create a new conda environment for use with _rtm_, execute the following
+terminal command:
 ```
 $ conda create -n rtm -c conda-forge cartopy gdal obspy utm xarray
 ```
-This creates a new environment called `rtm` with all published _rtm_
-dependencies installed. In addition to published packages, _rtm_ requires the
+This creates a new environment called `rtm` with all **almost all** _rtm_
+dependencies installed (see below). In addition to published packages, _rtm_
+requires the
 [_waveform_collection_](https://github.com/uafgeotools/waveform_collection)
 package.
 
@@ -40,9 +43,14 @@ To install _rtm_, first activate the `rtm` environment with
 $ conda activate rtm
 ```
 and install the dependency _waveform_collection_ into this environment
-(instructions [here](https://github.com/uafgeotools/waveform_collection#installation)).
+(instructions
+[here](https://github.com/uafgeotools/waveform_collection#installation)).
 
-Then execute the following terminal commands:
+Then install GMT 6 and PyGMT — installation instructions are
+[here](https://github.com/GenericMappingTools/gmt/blob/master/INSTALL.md)
+and
+[here](https://www.pygmt.org/dev/install.html), respectively. Finally, execute
+the following terminal commands:
 ```
 $ git clone https://github.com/uafgeotools/rtm.git
 $ cd rtm
@@ -70,10 +78,10 @@ Python packages:
 ...and their dependencies, which you don't really have to be concerned about if
 you're using conda!
 
-Optional (for automatic DEM downloading):
+Other:
 
-* [GMT 6](https://docs.generic-mapping-tools.org/latest/) (install by following
-  the [official GMT install instructions](https://github.com/GenericMappingTools/gmt/blob/master/INSTALL.md))
+* [GMT 6](https://docs.generic-mapping-tools.org/latest/)
+* [PyGMT](https://www.pygmt.org/)
 
 Usage
 -----
@@ -83,7 +91,9 @@ Access the package's functions with (for example)
 from waveform_collection import gather_waveforms
 from rtm import define_grid
 ```
-and so on. Currently, documentation only exists in function docstrings. For usage examples, see [`example_regional.py`](example_regional.py) or [`example_local.py`](example_local.py).
+and so on. Currently, documentation only exists in function docstrings. For
+usage examples, see [`example_regional.py`](example_regional.py) or
+[`example_local.py`](example_local.py).
 
 Authors
 -------
