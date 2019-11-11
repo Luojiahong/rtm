@@ -2,19 +2,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 from matplotlib import dates
-import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.io.img_tiles import Stamen
 from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 from .stack import get_peak_coordinates
 import utm
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import pygmt
+
+
+# Set universal GMT font size
+with pygmt.clib.Session() as session:
+    session.call_module('gmtset', 'FONT=12p')
+
+# PyGMT plot width
+WIDTH = 8  # [inches]
+
+# Marker size for PyGMT
+SYMBOL_SIZE = 0.1  # [inches]
+
+# Amount to shift title newlines by (works with with 12p font)
+TITLE_DY = 0.2  # [inches]
+
+# Fraction of total map extent (width) to use for scalebar
+SCALE_FRAC = 1/10
+
+# Define some conversion factors
+KM2M = 1000    # [m/km]
+M2KM = 1/KM2M  # [km/m]
+DEG2KM = 111   # [km/deg.] APPROX value at equator
 
 
 def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
-                    hires=False, dem=None):
+                    dem=None):
     """
     Plot a time slice through S to produce a map-view plot. If time is not
     specified, then the slice corresponds to the maximum of S in the time
@@ -30,8 +50,6 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
                     corresponding to max(S) is used (default: None)
         label_stations: Toggle labeling stations with network and station codes
                         (default: True)
-        hires: If True, use higher-resolution background image/coastlines,
-               which looks better but can be slow (default: False)
         dem: Overlay time slice on a user-supplied DEM from produce_dem
              (default: None)
     Returns:
@@ -43,38 +61,6 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     # Get coordinates of stack maximum in (latitude, longitude)
     time_max, y_max, x_max, peaks, props = get_peak_coordinates(S, unproject=S.UTM)
 
-    # Gather coordinates of grid center
-    lon_0, lat_0 = S.grid_center
-
-    if dem is not None:
-
-        # Note that the below is a hacky way to use matplotlib instead of
-        # cartopy and should be edited once cartopy labeling is functional
-        proj = None
-        transform = None
-        plot_transform = None
-        lon_0, lat_0, _, _ = utm.from_latlon(S.grid_center[1], S.grid_center[0])
-        x_max, y_max, _, _ = utm.from_latlon(y_max, x_max)
-        for tr in st:
-            tr.stats.longitude, tr.stats.latitude, _, _ = utm.from_latlon(
-                tr.stats.latitude, tr.stats.longitude)
-
-    elif S.UTM:
-        proj = ccrs.UTM(**S.UTM)
-        transform = proj
-        plot_transform = ccrs.Geodetic()
-    else:
-        # This is a good projection to use since it preserves area
-        proj = ccrs.AlbersEqualArea(central_longitude=lon_0,
-                                    central_latitude=lat_0,
-                                    standard_parallels=(S.y.values.min(),
-                                                        S.y.values.max()))
-        transform = ccrs.PlateCarree()
-        plot_transform = ccrs.Geodetic()
-
-    fig, ax = plt.subplots(figsize=(8, 8),
-                           subplot_kw=dict(projection=proj))
-
     # In either case, we convert from UTCDateTime to np.datetime64
     if time_slice:
         time_to_plot = np.datetime64(time_slice)
@@ -83,95 +69,125 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
 
     slice = S.sel(time=time_to_plot, method='nearest')
 
-    if dem is None:
-        _plot_geographic_context(ax=ax, utm=S.UTM, hires=hires)
-        slice_plot_kwargs = dict(ax=ax, alpha=0.5, cmap='hot_r',
-                                 add_colorbar=False, transform=transform)
+    fig = pygmt.Figure()
+
+    # Define coordinates of stations
+    if S.UTM:
+        sta_x = []
+        sta_y = []
+        for tr in processed_st:
+            utm_x, utm_y, _, _ = utm.from_latlon(tr.stats.latitude,
+                                                 tr.stats.longitude,
+                                                 force_zone_number=S.UTM['zone'])
+            sta_x.append(utm_x)
+            sta_y.append(utm_y)
     else:
-        cs = dem.plot.contour(ax=ax, colors='k', levels=50, zorder=-1,
-                              linewidths=0.3)
-        ax.clabel(cs, cs.levels[::2], fontsize=9, fmt='%d', inline=True)
+        sta_x = [tr.stats.longitude for tr in st]
+        sta_y = [tr.stats.latitude for tr in st]
 
-        ax.set_xlabel('UTM Easting (m)')
-        ax.set_ylabel('UTM Northing (m)')
+    # Define region
+    if not S.UTM:
+        # Rescale from 0-360 degrees
+        xmin = (np.hstack([sta_x, S.x.min()]) % 360).min()
+        xmax = (np.hstack([sta_x, S.x.max()]) % 360).max()
+    else:
+        xmin = np.hstack([sta_x, S.x.min()]).min()
+        xmax = np.hstack([sta_x, S.x.max()]).max()
+    ymin = np.hstack([sta_y, S.y.min()]).min()
+    ymax = np.hstack([sta_y, S.y.max()]).max()
 
-        slice_plot_kwargs = dict(ax=ax, alpha=0.5, cmap='hot_r',
-                                 add_colorbar=False, add_labels=False)
-
-        bar_length = np.around(dem.x_radius/4, decimals=-1)
-        bar_label = f'{bar_length:g} m'
-        scalebar = AnchoredSizeBar(ax.transData, bar_length, bar_label,
-                                   'lower left', pad=0.3, color='black',
-                                   frameon=True, size_vertical=1, borderpad=1)
-        ax.add_artist(scalebar)
-
-        plot_transform = ax.transData
+    region = [np.floor(xmin), np.ceil(xmax), np.floor(ymin), np.ceil(ymax)]
 
     if S.UTM:
-        # imshow works well here (no gridlines in translucent plot)
-        sm = slice.plot.imshow(**slice_plot_kwargs)
+        # Just Cartesian
+        proj = f'X{WIDTH}i/0'
+        # [m] Rounded to nearest 50 m
+        scale_length = np.round((region[1] - region[0]) * SCALE_FRAC / 50) * 50
+
     else:
-        # imshow performs poorly for Albers equal-area projection - use
-        # pcolormesh instead (gridlines will show in translucent plot)
-        sm = slice.plot.pcolormesh(**slice_plot_kwargs)
+        # This is a good projection to use since it preserves area
+        proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
+                                         np.mean(region[2:4]),
+                                         region[2], region[3],
+                                         WIDTH)
+        # [km] Rounded to nearest 200 km
+        scale_length = np.round(((region[1] - region[0]) * SCALE_FRAC * DEG2KM) / 200) * 200
 
-    cbar = fig.colorbar(sm, label='Stack amplitude')
-    cbar.solids.set_alpha(1)
+    # cs = dem.plot.contour(ax=ax, colors='k', levels=50, zorder=-1,
+    #                       linewidths=0.3)
+    # ax.clabel(cs, cs.levels[::2], fontsize=9, fmt='%d', inline=True)
+    #
 
-    # Initialize list of handles for legend
-    h = [None, None, None]
-    scatter_zorder = 5
+    fig.basemap(projection=proj, region=region, frame='af')
 
-    # Plot center of grid
-    h[0] = ax.scatter(lon_0, lat_0, s=50, color='limegreen', edgecolor='black',
-                      label='Grid center', transform=plot_transform,
-                      zorder=scatter_zorder)
+    if not S.UTM:
+        fig.coast(A='100+l', water='lightblue', land='lightgrey',
+                  shorelines=True)
+
+    with pygmt.clib.Session() as session:
+        with session.virtualfile_from_grid(slice) as grid_file:
+            session.call_module('grdview', f'{grid_file} -Cinferno -T+s -t30')
+    fig.colorbar(position=f'JCB+o0/0.5i+h+w{WIDTH * 0.75}i/0.15i',
+                 frame=['a', 'x+l"Stack amplitude"'])
+
+    # Plot the center of the grid
+    if S.UTM:
+        x_0, y_0, _, _ = utm.from_latlon(*S.grid_center[::-1],
+                                         force_zone_number=S.UTM['zone'])
+    else:
+        x_0, y_0 = S.grid_center
+    fig.plot(x_0, y_0, style=f'c{SYMBOL_SIZE}i', color='limegreen', pen=True,
+             label='"Grid center"')
 
     # Plot stack maximum
     if S.UTM:
         # UTM formatting
-        label = f'Stack maximum\n({x_max:.0f}, {y_max:.0f})'
+        label = f'({x_max:.0f}, {y_max:.0f})'
     else:
         # Lat/lon formatting
-        label = f'Stack maximum\n({y_max:.4f}, {x_max:.4f})'
-    h[1] = ax.scatter(x_max, y_max, s=100, color='red', marker='*',
-                      edgecolor='black', label=label,
-                      transform=plot_transform, zorder=scatter_zorder)
+        label = f'({y_max:.4f}, {x_max:.4f})'
+    fig.plot(x_max, y_max, style=f'a{SYMBOL_SIZE}i', color='red', pen=True,
+             label=f'"Stack maximum"')
+    # Dummy symbol for second line in legend
+    fig.plot(0, 0, t=100, pen='white', label=f'"{label}"')
 
     # Plot stations
-    for tr in st:
-        h[2] = ax.scatter(tr.stats.longitude,  tr.stats.latitude, marker='v',
-                          color='blue', edgecolor='black',
-                          label='Station', transform=plot_transform,
-                          zorder=scatter_zorder)
-        if label_stations:
-            ax.text(tr.stats.longitude, tr.stats.latitude,
-                    '  {}.{}'.format(tr.stats.network, tr.stats.station),
-                    verticalalignment='center_baseline',
-                    horizontalalignment='left', fontsize=10, weight='bold',
-                    transform=plot_transform)
+    fig.plot(sta_x, sta_y, style=f'i{SYMBOL_SIZE}i', color='blue', pen=True,
+             label=f'Station')
+    if label_stations:
+        for x, y, tr in zip(sta_x, sta_y, processed_st):
+            fig.text(x=x, y=y, text=f'{tr.stats.network}.{tr.stats.station}',
+                     font='8p,white=~0.8p', justify='LM', D='0.1i/0')
 
-    ax.legend(h, [handle.get_label() for handle in h], loc='best',
-              framealpha=1)
+    # Add legend
+    fig.legend(position='JTL+jTL', box='+gwhite+p1p')
 
+    # Add scalebar (valid in center of map)
+    if S.UTM:
+        fig.basemap(L='JBR+jBR+o1i+lm+w{}'.format(scale_length))
+    else:
+        fig.basemap(L='JBR+jBR+o1i+f+l+w{}k+c{}/{}'.format(scale_length,
+                                                           *S.grid_center))
+
+    # Add title
     title = f'Time: {UTCDateTime(slice.time.values.astype(str)).datetime}'
+    fig.basemap(frame=f'+t"{title}"')
 
+    # Add celerity info if present
     if hasattr(S, 'celerity'):
-        title += f'\nCelerity: {S.celerity:g} m/s'
+        # Move basemap down and plot another title
+        fig.basemap(Y=f'-{TITLE_DY}i',
+                    frame=f'+t"Celerity: {S.celerity:g} m/s"')
 
     # Label global maximum if applicable
     if slice.time.values == time_max:
-        title = 'GLOBAL MAXIMUM\n\n' + title
+        if hasattr(S, 'celerity'):
+            dy = TITLE_DY * 2  # Since we already moved the plot down
+        else:
+            dy = TITLE_DY
+        fig.basemap(Y=f'{dy}i', frame=f'+t"GLOBAL MAXIMUM"')
 
-    ax.set_title(title, pad=20)
-
-    # Another hack that can be removed once cartopy is improved
-    if dem is not None:
-        ax.set_aspect('equal')
-
-    fig.canvas.draw()  # Needed to make fig.tight_layout() work
-    fig.tight_layout()
-    fig.show()
+    fig.show(method='external')
 
     return fig
 
