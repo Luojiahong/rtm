@@ -201,8 +201,6 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         fig.basemap(L='JBR+jBR+o1i+f+l+w{}k+c{}/{}'.format(scale_length,
                                                            *S.grid_center))
 
-    fig.show(method='external')
-
     return fig
 
 
