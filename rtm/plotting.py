@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
@@ -8,6 +9,7 @@ from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 from .stack import get_peak_coordinates
 import utm
+from . import RTMWarning
 import pygmt
 
 
@@ -342,7 +344,7 @@ def plot_st(st, filt, equal_scale=False, remove_response=False,
         st_plot.detrend(type='linear')
         st_plot.taper(max_percentage=.01)
         st_plot.filter("bandpass", freqmin=filt[0], freqmax=filt[1], corners=2,
-                   zerophase=True)
+                       zerophase=True)
 
     if equal_scale:
         ym = np.max(st_plot.max())
@@ -371,8 +373,8 @@ def plot_st(st, filt, equal_scale=False, remove_response=False,
 
         if label_waveforms:
             ax[i].text(.85, .9,
-              f'{tr.stats.network}.{tr.stats.station}.{tr.stats.channel}',
-                    verticalalignment='center', transform=ax[i].transAxes)
+                       f'{tr.stats.network}.{tr.stats.station}.{tr.stats.channel}',
+                       verticalalignment='center', transform=ax[i].transAxes)
 
     ax[-1].set_xlabel('UTC Time')
 
@@ -394,13 +396,21 @@ def plot_stack_peak(S, plot_max=False):
         fig: Output figure
     """
 
-    s_peak = S.max(axis=(1,2)).data
+    s_peak = S.max(axis=(1, 2)).data
 
     fig, ax = plt.subplots(figsize=(8, 4), nrows=1, ncols=1)
     ax.plot(S.time, s_peak, 'k-')
     if plot_max:
         stack_maximum = S.where(S == S.max(), drop=True).squeeze()
-        ax.plot(stack_maximum.time, stack_maximum.data, 'ro')
+        if stack_maximum.size > 1:
+            max_indices = np.argwhere(~np.isnan(stack_maximum.data))
+            ax.plot(stack_maximum[tuple(max_indices[0])].time,
+                    stack_maximum[tuple(max_indices[0])].data, 'ro')
+            warnings.warn(f'Multiple global maxima ({len(stack_maximum.data)}) '
+                          'present in S!', RTMWarning)
+        else:
+            ax.plot(stack_maximum.time, stack_maximum.data, 'ro')
+
     ax.set_xlim(S.time[0].data, S.time[-1].data)
     ax.set_xlabel('UTC Time')
     ax.set_ylabel('Peak Stack Amplitude')
