@@ -147,7 +147,9 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         transp = 30  # [%]
     with pygmt.clib.Session() as session:
         with session.virtualfile_from_grid(slice) as grid_file:
-            session.call_module('grdview', f'{grid_file} -Cinferno -T+s -t{transp}')
+            pygmt.makecpt(cmap='hot', series=[slice.data.min(),
+                                              slice.data.max()], reverse=True)
+            session.call_module('grdview', f'{grid_file} -C -T+s -t{transp}')
 
     # Make colorbar
     if S.UTM:
