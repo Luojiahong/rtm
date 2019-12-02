@@ -96,7 +96,7 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     else:
         xmin = np.hstack([sta_x, S.x.min()]).min()
         xmax = np.hstack([sta_x, S.x.max()]).max()
-        buffer = 100  # [m]
+        buffer = 0.03 * (xmax - xmin) # 3% buffer [m]
     ymin = np.hstack([sta_y, S.y.min()]).min()
     ymax = np.hstack([sta_y, S.y.max()]).max()
 
