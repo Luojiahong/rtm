@@ -147,7 +147,7 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         transp = 30  # [%]
     with pygmt.clib.Session() as session:
         with session.virtualfile_from_grid(slice) as grid_file:
-            pygmt.makecpt(cmap='hot', series=[slice.data.min(),
+            pygmt.makecpt(cmap='magma', series=[slice.data.min(),
                                               slice.data.max()], reverse=True)
             session.call_module('grdview', f'{grid_file} -C -T+s -t{transp}')
 
@@ -181,7 +181,7 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     else:
         # Lat/lon formatting
         label = f'({y_max:.4f}, {x_max:.4f})'
-    fig.plot(x_max, y_max, style=f'd{SYMBOL_SIZE}i', color='white', pen=True,
+    fig.plot(x_max, y_max, style=f'd{SYMBOL_SIZE}i', color='red', pen=True,
              label=f'"Stack maximum"')
     # Dummy symbol for second line in legend
     fig.plot(0, 0, t=100, pen='white', label=f'"{label}"')
