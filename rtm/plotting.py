@@ -15,7 +15,7 @@ import pygmt
 
 # Set universal GMT font size
 with pygmt.clib.Session() as session:
-    session.call_module('gmtset', 'FONT=12p')
+    session.call_module('gmtset', 'FONT=11p')
 
 # Marker size for PyGMT
 SYMBOL_SIZE = 0.1  # [inches]
@@ -69,7 +69,7 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     fig = pygmt.Figure()
 
     if S.UTM:
-        plot_width = 5  # [inches]
+        plot_width = 6  # [inches]
     else:
         plot_width = 8  # [inches]
 
@@ -155,14 +155,14 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     if S.UTM:
         # Ensure colorbar height equals map height
         aspect_ratio = (region[3] - region[2]) / (region[1] - region[0])
-        position=f'JMR+o1.2i/0+w{plot_width * aspect_ratio}i/0.15i'
+        position=f'JMR+o0.9i/0+w{plot_width * aspect_ratio}i/0.15i'
     else:
         position=f'JCB+o0/0.5i+h+w{plot_width * 0.75}i/0.15i'
     fig.colorbar(position=position, frame=['a', 'x+l"Stack amplitude"'])
 
     # If projected plot and a DEM is provided, draw contours
     if S.UTM and dem is not None:
-        interval = np.round((dem.max() - dem.min()) / 40)   #use 40 contours
+        interval = np.round((dem.max() - dem.min()) / 30)   #use 40 contours
         fig.grdcontour(dem, interval=interval.data, annotation='50+u" m"')  # Assumes meters!
 
     # Plot the center of the grid
@@ -181,18 +181,18 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     else:
         # Lat/lon formatting
         label = f'({y_max:.4f}, {x_max:.4f})'
-    fig.plot(x_max, y_max, style=f'a{SYMBOL_SIZE}i', color='red', pen=True,
+    fig.plot(x_max, y_max, style=f'd{SYMBOL_SIZE}i', color='white', pen=True,
              label=f'"Stack maximum"')
     # Dummy symbol for second line in legend
     fig.plot(0, 0, t=100, pen='white', label=f'"{label}"')
 
     # Plot stations
-    fig.plot(sta_x, sta_y, style=f'i{SYMBOL_SIZE}i', color='blue', pen=True,
+    fig.plot(sta_x, sta_y, style=f'i{SYMBOL_SIZE}i', color='100', pen=True,
              label=f'Station')
     if label_stations:
         for x, y, tr in zip(sta_x, sta_y, processed_st):
             fig.text(x=x, y=y, text=f'{tr.stats.network}.{tr.stats.station}',
-                     font='10p,white=~1p', justify='LM', D='0.1i/0')
+                     font='10p,100=~1p', justify='LM', D='0.1i/0')
 
     # Add legend
     fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
