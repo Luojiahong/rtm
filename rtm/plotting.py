@@ -162,7 +162,8 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
 
     # If projected plot and a DEM is provided, draw contours
     if S.UTM and dem is not None:
-        interval = np.round((dem.max() - dem.min()) / 30)   #use 40 contours
+        num_contours = 30
+        interval = np.round((dem.max() - dem.min()) / num_contours)
         fig.grdcontour(dem, interval=interval.data, annotation='50+u" m"')  # Assumes meters!
 
     # Plot the center of the grid
