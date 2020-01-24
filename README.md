@@ -89,7 +89,7 @@ Usage
 -----
 
 Documentation is available online
-[here](https://uaf-rtm.readthedocs.io).
+[here](https://uaf-rtm.readthedocs.io/en/pygmt/).
 
 Access the package's functions with (for example)
 ```python
