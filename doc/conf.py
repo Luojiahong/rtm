@@ -34,7 +34,8 @@ autodoc_mock_imports = ['numpy',
                         'obspy',
                         'utm',
                         'scipy',
-                        'mpl_toolkits'
+                        'mpl_toolkits',
+                        'pandas'
                         ]
 
 apidoc_module_dir = '../rtm'
@@ -51,5 +52,6 @@ intersphinx_mapping = {
     'obspy': ('https://docs.obspy.org/', None),
     'xarray': ('http://xarray.pydata.org/en/stable/', None),
     'cartopy': ('https://scitools.org.uk/cartopy/docs/latest/', None),
-    'matplotlib': ('https://matplotlib.org/', None)
+    'matplotlib': ('https://matplotlib.org/', None),
+    'pygmt': ('https://www.pygmt.org/latest/', None)
 }
