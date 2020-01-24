@@ -3,8 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 from matplotlib import dates
-import cartopy.feature as cfeature
-from cartopy.io.img_tiles import Stamen
 from obspy import UTCDateTime
 from obspy.geodetics import gps2dist_azimuth
 from .stack import get_peak_coordinates
@@ -432,40 +430,3 @@ def plot_stack_peak(S, plot_max=False):
     ax.set_ylabel('Peak Stack Amplitude')
 
     return fig
-
-
-def _plot_geographic_context(ax, utm, hires=False):
-    """
-    Plot geographic basemap information on a map axis. Plots a background image
-    for UTM-projected plots and simple coastlines for unprojected plots.
-
-    Args:
-        ax (:class:`~cartopy.mpl.geoaxes.GeoAxes`): Existing axis to plot into
-        utm (bool): Flag specifying if the axis is projected to UTM or not
-        hires (bool): If `True`, use higher-resolution images/coastlines
-            (default: `False`)
-    """
-
-    # Since projected grids cover less area and may not include coastlines,
-    # use a background image to provide geographical context (can be slow)
-    if utm:
-        if hires:
-            zoom_level = 12
-        else:
-            zoom_level = 8
-        ax.add_image(Stamen(style='terrain-background'), zoom_level, zorder=-1)
-
-    # Since unprojected grids have regional/global extent, just show the
-    # coastlines
-    else:
-        if hires:
-            scale = '10m'
-        else:
-            scale = '50m'
-        land = cfeature.LAND.with_scale(scale)
-        ax.add_feature(land, facecolor=cfeature.COLORS['land'],
-                       edgecolor='black')
-        ax.background_patch.set_facecolor(cfeature.COLORS['water'])
-        lakes = cfeature.LAKES.with_scale(scale)
-        ax.add_feature(lakes, facecolor=cfeature.COLORS['water'],
-                       edgecolor='black', zorder=0)
