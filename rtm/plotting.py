@@ -14,8 +14,10 @@ import pygmt
 
 
 # Set universal GMT font size
-with pygmt.clib.Session() as session:
-    session.call_module('gmtset', 'FONT=11p')
+session = pygmt.clib.Session()
+session.create('')
+session.call_module('gmtset', 'FONT=11p')
+session.destroy()
 
 # Marker size for PyGMT
 SYMBOL_SIZE = 0.1  # [inches]
@@ -148,11 +150,14 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         transp = 20  # [%]
     else:
         transp = 30  # [%]
-    with pygmt.clib.Session() as session:
-        with session.virtualfile_from_grid(slice) as grid_file:
-            pygmt.makecpt(cmap='magma', series=[slice.data.min(),
-                                              slice.data.max()], reverse=True)
-            session.call_module('grdview', f'{grid_file} -C -T+s -t{transp}')
+
+    session = pygmt.clib.Session()
+    session.create('')
+    with session.virtualfile_from_grid(slice) as grid_file:
+        pygmt.makecpt(cmap='magma', series=[slice.data.min(),
+                                            slice.data.max()], reverse=True)
+        session.call_module('grdview', f'{grid_file} -C -T+s -t{transp}')
+    session.destroy()
 
     # Make colorbar
     if S.UTM:
