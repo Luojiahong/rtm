@@ -35,7 +35,8 @@ autodoc_mock_imports = ['numpy',
                         'utm',
                         'scipy',
                         'mpl_toolkits',
-                        'pandas'
+                        'pandas',
+                        'pygmt'
                         ]
 
 apidoc_module_dir = '../rtm'
