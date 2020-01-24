@@ -35,7 +35,6 @@ autodoc_mock_imports = ['numpy',
                         'utm',
                         'scipy',
                         'mpl_toolkits',
-                        'pandas',
                         'pygmt'
                         ]
 
