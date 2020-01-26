@@ -1,7 +1,7 @@
 rtm
 ===
 
-[![](https://readthedocs.org/projects/uaf-rtm/badge/?version=master)](https://uaf-rtm.readthedocs.io/en/master/)
+[![](https://readthedocs.org/projects/uaf-rtm/badge/?version=pygmt)](https://uaf-rtm.readthedocs.io/en/pygmt/)
 
 _rtm_ is a Python package for locating infrasound sources using reverse time
 migration (RTM). Infrasound (or seismic) waveform data are back-projected over
