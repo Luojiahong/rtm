@@ -53,5 +53,6 @@ intersphinx_mapping = {
     'xarray': ('http://xarray.pydata.org/en/stable/', None),
     'cartopy': ('https://scitools.org.uk/cartopy/docs/latest/', None),
     'matplotlib': ('https://matplotlib.org/', None),
-    'pygmt': ('https://www.pygmt.org/latest/', None)
+    'pygmt': ('https://www.pygmt.org/latest/', None),
+    'waveform_collection': ('https://uaf-waveform-collection.readthedocs.io/en/master/', None)
 }
