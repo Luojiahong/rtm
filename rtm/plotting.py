@@ -126,7 +126,7 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         scale_length = np.round(((region[1] - region[0]) * SCALE_FRAC * DEG2KM) / nearest) * nearest
 
     # Add title
-    title = f'Time: {UTCDateTime(slice.time.values.astype(str)).datetime}'
+    title = 'Time: {}'.format(UTCDateTime(slice.time.values.astype(str)).strftime('%Y-%m-%d %H:%M:%S'))
 
     # Add celerity info if applicable
     if hasattr(S, 'celerity'):
@@ -315,7 +315,7 @@ def plot_record_section(st, origin_time, source_location, plot_celerity=None,
 
     ax.set_ylim(bottom=0)  # Show all the way to zero offset
 
-    ax.set_xlabel(f'Time (s) from {origin_time.datetime}')
+    ax.set_xlabel('Time (s) from {}'.format(origin_time.strftime('%Y-%m-%d %H:%M:%S')))
     ax.set_ylabel('Distance (km) from '
                   '({:.4f}, {:.4f})'.format(*source_location))
 
