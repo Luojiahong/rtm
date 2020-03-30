@@ -196,12 +196,12 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     fig.plot(0, 0, t=100, pen='white', label=f'"{label}"')
 
     # Plot stations
-    fig.plot(sta_x, sta_y, style=f'i{SYMBOL_SIZE}i', color='100', pen=True,
+    fig.plot(sta_x, sta_y, style=f'i{SYMBOL_SIZE}i', color='dimgray', pen=True,
              label=f'Station')
     if label_stations:
         for x, y, tr in zip(sta_x, sta_y, processed_st):
             fig.text(x=x, y=y, text=f'{tr.stats.network}.{tr.stats.station}',
-                     font='10p,100=~1p', justify='LM', D='0.1i/0')
+                     font='10p,white=~1p', justify='LM', D='0.1i/0')
 
     # Add legend
     fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
