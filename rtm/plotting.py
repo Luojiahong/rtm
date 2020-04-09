@@ -149,8 +149,8 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
 
     fig.basemap(projection=proj, region=region, frame=['af', f'+t"{title}"'])
     if S.UTM:
-        fig.basemap(frame=['SW', 'xa+l"UTM Easting (m)"',
-                                 'ya+l"UTM Northing (m)"' ])
+        fig.basemap(frame=['SW', 'xa+l"UTM easting (m)"',
+                                 'ya+l"UTM northing (m)"' ])
 
     # If unprojected plot, draw coastlines
     if not S.UTM:
@@ -430,7 +430,7 @@ def plot_stack_peak(S, plot_max=False, ax=None):
     if plot_max:
         stack_maximum = S.where(S == S.max(), drop=True).squeeze()
         marker_kwargs = dict(marker='*', color='red', edgecolor='black', s=150,
-                             zorder=5)
+                             zorder=5, clip_on=False)
         if stack_maximum.size > 1:
             max_indices = np.argwhere(~np.isnan(stack_maximum.data))
             ax.scatter(stack_maximum[tuple(max_indices[0])].time.data,
@@ -443,6 +443,7 @@ def plot_stack_peak(S, plot_max=False, ax=None):
                        **marker_kwargs)
 
     ax.set_xlim(S.time[0].data, S.time[-1].data)
+    ax.set_ylim(bottom=0)  # Never can go below zero
     ax.set_xlabel('UTC time')
     ax.set_ylabel('Max stack amplitude')
 
