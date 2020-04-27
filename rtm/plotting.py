@@ -167,13 +167,10 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
         # Assumes meters!
         fig.grdcontour(dem, interval=cont_int, annotation=f'{annot_int}+u" m"')
 
-    session = pygmt.clib.Session()
-    session.create('')
-    with session.virtualfile_from_grid(slice) as grid_file:
-        pygmt.makecpt(cmap='viridis', series=[np.nanmin(slice.data),
-                                              np.nanmax(slice.data)])
-        session.call_module('grdview', f'{grid_file} -C -T+s -t{transp}')
-    session.destroy()
+    # Make heatmap of slice
+    pygmt.makecpt(cmap='viridis', series=[np.nanmin(slice.data),
+                                          np.nanmax(slice.data)])
+    fig.grdview(slice, cmap=True, T='+s', t=transp)
 
     # Make colorbar
     if S.UTM:
