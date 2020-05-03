@@ -37,7 +37,7 @@ section.
 To create a new conda environment for use with _rtm_, execute the following
 terminal command:
 ```
-$ conda create -n rtm -c conda-forge cartopy gdal obspy utm xarray
+$ conda create -n rtm -c conda-forge gdal obspy utm xarray
 ```
 This creates a new environment called `rtm` with all **almost all** _rtm_
 dependencies installed (see below). In addition to published packages, _rtm_
@@ -76,7 +76,6 @@ _uafgeotools_ repositories:
 
 Python packages:
 
-* [cartopy](https://scitools.org.uk/cartopy/docs/latest/)
 * [GDAL](https://gdal.org/)
 * [ObsPy](http://docs.obspy.org/)
 * [utm](https://github.com/Turbo87/utm)

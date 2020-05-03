@@ -1,8 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from xarray import DataArray
-import cartopy.crs as ccrs
-from cartopy.io.srtm import add_shading
 from osgeo import gdal, osr
 from obspy.geodetics import gps2dist_azimuth
 import utm
