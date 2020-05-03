@@ -378,45 +378,54 @@ def produce_dem(grid, external_file=None, plot_output=True, output_file=False):
 
         print('Generating DEM hillshade plot...')
 
-        proj = ccrs.UTM(**dem.UTM)
+        plot_width = 6  # [inches]
+        proj = f'X{plot_width}i/0'
 
-        fig, ax = plt.subplots(figsize=(10, 10),
-                               subplot_kw=dict(projection=proj))
+        x = dem.x.values
+        y = dem.y.values
 
-        # Create hillshade
-        shaded_dem = add_shading(dem, azimuth=135, altitude=45)
+        # This will perfectly trim axis to DEM extent, considering registration
+        region = [np.floor(x.min()) - dem.spacing / 2,
+                  np.ceil(x.max()) + dem.spacing / 2,
+                  np.floor(y.min()) - dem.spacing / 2,
+                  np.ceil(y.max()) + dem.spacing / 2]
 
-        # Plot hillshade
-        grid_shaded = grid.copy()
-        grid_shaded.data = shaded_dem
-        grid_shaded.plot.imshow(ax=ax, cmap='Greys_r', center=False,
-                                add_colorbar=False, transform=proj)
+        fig = pygmt.Figure()
 
-        # Add translucent DEM
-        im = dem.plot.imshow(ax=ax, cmap='magma', alpha=0.5, vmin=0,
-                             add_colorbar=False, transform=proj)
-        cbar = fig.colorbar(im, label='Elevation (m)')
-        cbar.solids.set_alpha(1)
-
-        # Plot the center of the grid
-        ax.scatter(*dem.grid_center, s=50, color='limegreen',
-                   edgecolor='black', label='Grid center',
-                   transform=ccrs.Geodetic())
-
-        # Add a legend
-        ax.legend(loc='best')
-
+        # Create title
         if external_file:
             source_label = os.path.abspath(external_file)
         else:
             source_label = '1 arc-second SRTM data'
+        title = '{}, resampled to {} m spacing'.format(source_label,
+                                                       dem.spacing)
 
-        ax.set_title('{}\nResampled to {} m spacing'.format(source_label,
-                                                            dem.spacing))
+        # Create basemap
+        fig.basemap(projection=proj, region=region,
+                    frame=['af', f'+t"{title}"'])
+        fig.basemap(frame=['SW', 'xa+l"UTM easting (m)"',
+                           'ya+l"UTM northing (m)"'])
 
-        fig.canvas.draw()
-        fig.tight_layout()
-        fig.show()
+        # Plot hillshade
+        with pygmt.helpers.GMTTempFile() as tmp_grd:
+            session = pygmt.clib.Session()
+            session.create('')
+            with session.virtualfile_from_grid(dem) as dem_file:
+                session.call_module('grdgradient',
+                                    f'{dem_file} -A-45 -Nt1- -G{tmp_grd.name}')
+            session.destroy()
+            fig.grdimage(dem, cmap='magma', E=300, Q=True, I=tmp_grd.name)
+
+        # Plot the center of the grid
+        x_0, y_0, *_ = utm.from_latlon(*dem.grid_center[::-1])
+        fig.plot(x_0, y_0, style=f'c{SYMBOL_SIZE}i', color='limegreen',
+                 pen=f'{SYMBOL_PEN}p', label='"Grid center"')
+
+        # Add a legend
+        fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
+
+        # Show figure
+        fig.show(method='external')
 
         print('Done')
 
