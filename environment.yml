@@ -1,0 +1,21 @@
+name: rtm
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - gdal
+  - gmt=6.0.0  # Because PyGMT requires GMT 6.0.0 or higher
+  - ipython
+  - libnetcdf=4.7.3  # Because 4.7.4 causes "netcdf-4 operation on netcdf-3 file" error
+  - netcdf4
+  - numpy
+  - obspy
+  - packaging
+  - pandas
+  - pip
+  - utm
+  - xarray
+  - pip:
+    - pygmt==0.1.0  # Because 0.1.0 is the first stable release
+    - git+https://github.com/uafgeotools/waveform_collection.git
+    - -e .

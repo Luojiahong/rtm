@@ -29,43 +29,28 @@ Solid Earth_, 115, B12329.
 Installation
 ------------
 
-It's recommended that you install this package into a new
-[conda](https://docs.conda.io/projects/conda/en/latest/index.html) environment
-containing all of the packages listed in the [Dependencies](#dependencies)
-section.
+We recommend you install this package into a new
+[conda](https://docs.conda.io/projects/conda/en/latest/index.html) environment.
+(Please install [Anaconda](https://www.anaconda.com/products/individual) or
+[Miniconda](https://docs.conda.io/en/latest/miniconda.html) before proceeding.)
+The environment must contain all of the packages listed in the
+[Dependencies](#dependencies) section. For ease of installation, we've provided
+an
+[`environment.yml`](https://github.com/uafgeotools/rtm/blob/pygmt/environment.yml)
+file which specifies all of these dependencies as well as instructions for
+installing _rtm_ itself. To install _rtm_ in this manner, execute the following
+commands:
+```
+git clone https://github.com/uafgeotools/rtm.git
+cd rtm
+conda env create -f environment.yml
+```
+This creates a new conda environment named `rtm` and installs _rtm_ and all of
+its dependencies there.
 
-To create a new conda environment for use with _rtm_, execute the following
-terminal command:
-```
-$ conda create -n rtm -c conda-forge gdal obspy utm xarray
-```
-This creates a new environment called `rtm` with all **almost all** _rtm_
-dependencies installed (see below). In addition to published packages, _rtm_
-requires the
-[_waveform_collection_](https://github.com/uafgeotools/waveform_collection)
-package.
-
-To install _rtm_, first activate the `rtm` environment with
-```
-$ conda activate rtm
-```
-and install the dependency _waveform_collection_ into this environment
-(instructions
-[here](https://github.com/uafgeotools/waveform_collection#installation)).
-
-Then install GMT 6 and PyGMT — installation instructions are
-[here](https://github.com/GenericMappingTools/gmt/blob/master/INSTALL.md/)
-and
-[here](https://www.pygmt.org/dev/install.html), respectively. Finally, execute
-the following terminal commands:
-```
-$ git clone https://github.com/uafgeotools/rtm.git
-$ cd rtm
-$ pip install -e .
-```
-The final command installs the package in "editable" mode, which means that you
-can update it with a simple `git pull` in your local repository. This install
-command only needs to be run once.
+The final command above installs _rtm_ in "editable" mode, which means that you
+can update it with a simple `git pull` in your local repository. We recommend
+you do this often, since this code is still under rapid development.
 
 Dependencies
 ------------
@@ -78,6 +63,7 @@ Python packages:
 
 * [GDAL](https://gdal.org/)
 * [ObsPy](http://docs.obspy.org/)
+* [PyGMT](https://www.pygmt.org/)
 * [utm](https://github.com/Turbo87/utm)
 * [xarray](http://xarray.pydata.org/en/stable/)
 
@@ -87,7 +73,6 @@ you're using conda!
 Other:
 
 * [GMT 6](https://docs.generic-mapping-tools.org/latest/)
-* [PyGMT](https://www.pygmt.org/)
 
 Usage
 -----
@@ -95,7 +80,12 @@ Usage
 Documentation is available online
 [here](https://uaf-rtm.readthedocs.io/en/pygmt/).
 
-Access the package's functions with (for example)
+To use _rtm_, you must always first activate the `rtm` environment with:
+```
+conda activate rtm
+```
+Then, you may access the package's functions from the Python interpreter with
+(for example)
 ```python
 from waveform_collection import gather_waveforms
 from rtm import define_grid
