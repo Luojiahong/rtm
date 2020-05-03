@@ -12,10 +12,22 @@ import os
 import subprocess
 import warnings
 from .travel_time import celerity_travel_time, fdtd_travel_time
-from .plotting import _plot_geographic_context
+import pygmt
 from .stack import calculate_semblance
 from . import RTMWarning
 
+
+# Set universal GMT font size
+session = pygmt.clib.Session()
+session.create('')
+session.call_module('gmtset', 'FONT=11p')
+session.destroy()
+
+# Marker size for PyGMT
+SYMBOL_SIZE = 0.1  # [inches]
+
+# Symbol pen size thickness
+SYMBOL_PEN = 0.75  # [pt]
 
 gdal.UseExceptions()  # Allows for more Pythonic errors from GDAL
 
@@ -131,36 +143,61 @@ def define_grid(lon_0, lat_0, x_radius, y_radius, spacing, projected=False,
     # Plot grid preview, if specified
     if plot_preview:
         print('Generating grid preview plot...')
+
+        # Make the grid pixel-registered for GMT
+        x_new = grid_out.x.values.copy()
+        y_new = grid_out.y.values.copy()
+        x_new -= spacing / 2
+        y_new -= spacing / 2
+        x_new = np.hstack([x_new, x_new[-1] + spacing])
+        y_new = np.hstack([y_new, y_new[-1] + spacing])
+        grid_preview = DataArray(np.zeros((y_new.size, x_new.size)),
+                                 coords=[('y', y_new), ('x', x_new)])
+
+        fig = pygmt.Figure()
+
         if projected:
-            proj = ccrs.UTM(**grid_out.UTM)
-            transform = proj
+            plot_width = 6  # [inches]
+        else:
+            plot_width = 8  # [inches]
+
+        region = [np.floor(x_new.min()), np.ceil(x_new.max()),
+                  np.floor(y_new.min()), np.ceil(y_new.max())]
+
+        if projected:
+            # Just Cartesian
+            proj = f'X{plot_width}i/0'
         else:
             # This is a good projection to use since it preserves area
-            proj = ccrs.AlbersEqualArea(central_longitude=lon_0,
-                                        central_latitude=lat_0,
-                                        standard_parallels=(y.min(), y.max()))
-            transform = ccrs.PlateCarree()
+            proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
+                                             np.mean(region[2:4]),
+                                             region[2], region[3],
+                                             plot_width)
 
-        fig, ax = plt.subplots(figsize=(10, 10),
-                               subplot_kw=dict(projection=proj))
+        fig.basemap(projection=proj, region=region, frame='af')
+        if projected:
+            fig.basemap(frame=['SW', 'xa+l"UTM easting (m)"',
+                               'ya+l"UTM northing (m)"'])
 
-        _plot_geographic_context(ax=ax, utm=projected)
+        # If unprojected plot, draw coastlines
+        if not projected:
+            fig.coast(A='100+l', water='lightblue', land='lightgrey',
+                      shorelines=True)
 
         # Note that trial source locations are at the CENTER of each plotted
         # grid box
-        grid_out.plot.pcolormesh(ax=ax, transform=transform,
-                                 edgecolor='black', add_colorbar=False)
+        pygmt.makecpt(A='100+a')
+        fig.grdview(grid_preview, Q='sm', cmap=True, meshpen='0.5p')
 
         # Plot the center of the grid
-        ax.scatter(lon_0, lat_0, s=50, color='limegreen', edgecolor='black',
-                   label='Grid center', transform=ccrs.Geodetic())
+        fig.plot(x_0, y_0, style=f'c{SYMBOL_SIZE}i', color='limegreen',
+                 pen=f'{SYMBOL_PEN}p', label='"Grid center"')
 
         # Add a legend
-        ax.legend(loc='best')
+        fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
 
-        fig.canvas.draw()  # Needed to make fig.tight_layout() work
-        fig.tight_layout()
-        fig.show()
+        # Show figure
+        fig.show(method='external')
 
         print('Done')
 
