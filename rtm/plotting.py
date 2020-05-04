@@ -7,8 +7,9 @@ from obspy.geodetics import gps2dist_azimuth
 from .stack import get_peak_coordinates
 import utm
 from datetime import datetime
-from . import RTMWarning
+from xarray import DataArray
 import pygmt
+from . import RTMWarning
 
 
 # Set universal GMT font size
@@ -451,6 +452,70 @@ def plot_stack_peak(S, plot_max=False, ax=None):
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha='right')
 
     return fig
+
+
+def plot_grid_preview(grid):
+    """
+    Plot a preview of the grid of trial sources.
+
+    Args:
+        grid (:class:`~xarray.DataArray`): Grid to plot
+    """
+
+    # Make the grid pixel-registered for GMT
+    x_new = grid.x.values.copy()
+    y_new = grid.y.values.copy()
+    x_new -= grid.spacing / 2
+    y_new -= grid.spacing / 2
+    x_new = np.hstack([x_new, x_new[-1] + grid.spacing])
+    y_new = np.hstack([y_new, y_new[-1] + grid.spacing])
+    grid_preview = DataArray(np.zeros((y_new.size, x_new.size)),
+                             coords=[('y', y_new), ('x', x_new)])
+
+    fig = pygmt.Figure()
+
+    region = [np.floor(x_new.min()), np.ceil(x_new.max()),
+              np.floor(y_new.min()), np.ceil(y_new.max())]
+
+    plot_width = 6  # [inches]
+    if grid.UTM:
+        # Just Cartesian
+        proj = f'X{plot_width}i/0'
+    else:
+        # This is a good projection to use since it preserves area
+        proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
+                                         np.mean(region[2:4]),
+                                         region[2], region[3],
+                                         plot_width)
+
+    fig.basemap(projection=proj, region=region, frame='af')
+    if grid.UTM:
+        fig.basemap(frame=['SW', 'xa+l"UTM easting (m)"',
+                           'ya+l"UTM northing (m)"'])
+
+    # If unprojected plot, draw coastlines
+    if not grid.UTM:
+        fig.coast(A='100+l', water='lightblue', land='lightgrey',
+                  shorelines=True)
+
+    # Note that trial source locations are at the CENTER of each plotted
+    # grid box
+    pygmt.makecpt(A='100+a')
+    fig.grdview(grid_preview, Q='sm', cmap=True, meshpen='0.5p')
+
+    # Plot the center of the grid
+    if grid.UTM:
+        x_0, y_0, zone_number, _ = utm.from_latlon(*grid.grid_center[::-1])
+    else:
+        x_0, y_0, = grid.grid_center
+    fig.plot(x_0, y_0, style=f'c{SYMBOL_SIZE}i', color='limegreen',
+             pen=f'{SYMBOL_PEN}p', label='"Grid center"')
+
+    # Add a legend
+    fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
+
+    # Show figure
+    fig.show(method='external')
 
 
 # Subclass ConciseDateFormatter (modifies __init__() and set_axis() methods)

@@ -11,6 +11,7 @@ import warnings
 from .travel_time import celerity_travel_time, fdtd_travel_time
 import pygmt
 from .stack import calculate_semblance
+from .plotting import plot_grid_preview
 from . import RTMWarning
 
 
@@ -140,62 +141,7 @@ def define_grid(lon_0, lat_0, x_radius, y_radius, spacing, projected=False,
     # Plot grid preview, if specified
     if plot_preview:
         print('Generating grid preview plot...')
-
-        # Make the grid pixel-registered for GMT
-        x_new = grid_out.x.values.copy()
-        y_new = grid_out.y.values.copy()
-        x_new -= spacing / 2
-        y_new -= spacing / 2
-        x_new = np.hstack([x_new, x_new[-1] + spacing])
-        y_new = np.hstack([y_new, y_new[-1] + spacing])
-        grid_preview = DataArray(np.zeros((y_new.size, x_new.size)),
-                                 coords=[('y', y_new), ('x', x_new)])
-
-        fig = pygmt.Figure()
-
-        if projected:
-            plot_width = 6  # [inches]
-        else:
-            plot_width = 8  # [inches]
-
-        region = [np.floor(x_new.min()), np.ceil(x_new.max()),
-                  np.floor(y_new.min()), np.ceil(y_new.max())]
-
-        if projected:
-            # Just Cartesian
-            proj = f'X{plot_width}i/0'
-        else:
-            # This is a good projection to use since it preserves area
-            proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
-                                             np.mean(region[2:4]),
-                                             region[2], region[3],
-                                             plot_width)
-
-        fig.basemap(projection=proj, region=region, frame='af')
-        if projected:
-            fig.basemap(frame=['SW', 'xa+l"UTM easting (m)"',
-                               'ya+l"UTM northing (m)"'])
-
-        # If unprojected plot, draw coastlines
-        if not projected:
-            fig.coast(A='100+l', water='lightblue', land='lightgrey',
-                      shorelines=True)
-
-        # Note that trial source locations are at the CENTER of each plotted
-        # grid box
-        pygmt.makecpt(A='100+a')
-        fig.grdview(grid_preview, Q='sm', cmap=True, meshpen='0.5p')
-
-        # Plot the center of the grid
-        fig.plot(x_0, y_0, style=f'c{SYMBOL_SIZE}i', color='limegreen',
-                 pen=f'{SYMBOL_PEN}p', label='"Grid center"')
-
-        # Add a legend
-        fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
-
-        # Show figure
-        fig.show(method='external')
-
+        plot_grid_preview(grid_out)
         print('Done')
 
     return grid_out
