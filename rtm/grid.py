@@ -10,7 +10,7 @@ import subprocess
 import warnings
 from .travel_time import celerity_travel_time, fdtd_travel_time
 from .stack import calculate_semblance
-from .plotting import plot_grid_preview, plot_dem
+from .plotting import _plot_grid_preview, _plot_dem
 from . import RTMWarning
 
 
@@ -128,7 +128,7 @@ def define_grid(lon_0, lat_0, x_radius, y_radius, spacing, projected=False,
     # Plot grid preview, if specified
     if plot_preview:
         print('Generating grid preview plot...')
-        plot_grid_preview(grid_out)
+        _plot_grid_preview(grid_out)
         print('Done')
 
     return grid_out
@@ -307,7 +307,7 @@ def produce_dem(grid, external_file=None, plot_output=True, output_file=False):
     # Plot DEM, if specified
     if plot_output:
         print('Generating DEM hillshade plot...')
-        plot_dem(dem, external_file)
+        _plot_dem(dem, external_file)
         print('Done')
 
     return dem

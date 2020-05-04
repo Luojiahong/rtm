@@ -455,7 +455,7 @@ def plot_stack_peak(S, plot_max=False, ax=None):
     return fig
 
 
-def plot_grid_preview(grid):
+def _plot_grid_preview(grid):
     """
     Plot a preview of the grid of trial sources.
 
@@ -516,7 +516,7 @@ def plot_grid_preview(grid):
     fig.show(method='external')
 
 
-def plot_dem(dem, external_file):
+def _plot_dem(dem, external_file):
     """
     Plot a DEM hillshade.
 
