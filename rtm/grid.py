@@ -421,6 +421,11 @@ def produce_dem(grid, external_file=None, plot_output=True, output_file=False):
         # Add a legend
         fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
 
+        # Add a colorbar
+        aspect_ratio = (region[3] - region[2]) / (region[1] - region[0])
+        position = f'JMR+o0.9i/0+w{plot_width * aspect_ratio}i/0.15i'
+        fig.colorbar(position=position, frame=['a', 'x+l"Elevation (m)"'])
+
         # Show figure
         fig.show(method='external')
 
