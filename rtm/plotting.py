@@ -588,8 +588,8 @@ def _albers(region, width):
     for use with PyGMT.
 
     Args:
-        region (list): PLotting region as [xmin, xmax, ymin, ymax] in degrees
-        width (int or float): Plot width in inches
+        region (list): Plotting region as ``[xmin, xmax, ymin, ymax]`` [deg.]
+        width (int or float): Plot width [inches]
 
     Returns:
         str: The formatted projection string
