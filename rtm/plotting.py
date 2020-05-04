@@ -121,19 +121,16 @@ def plot_time_slice(S, processed_st, time_slice=None, label_stations=True,
     region = [np.floor(xmin - buffer), np.ceil(xmax + buffer),
               np.floor(ymin - buffer), np.ceil(ymax + buffer)]
 
+    # Define projection and a sensible scalebar length
     if S.UTM:
         # Just Cartesian
         proj = f'X{plot_width}i/0'
         # [m] Rounded to nearest `nearest` m
         nearest = 100
         scale_length = np.round((region[1] - region[0]) * SCALE_FRAC / nearest) * nearest
-
     else:
-        # This is a good projection to use since it preserves area
-        proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
-                                         np.mean(region[2:4]),
-                                         region[2], region[3],
-                                         plot_width)
+        # Albers
+        proj = _albers(region, plot_width)
         # [km] Rounded to nearest `nearest` km
         nearest = 200
         scale_length = np.round(((region[1] - region[0]) * SCALE_FRAC * DEG2KM) / nearest) * nearest
@@ -486,11 +483,8 @@ def plot_grid_preview(grid):
         # Just Cartesian
         proj = f'X{PREVIEW_PLOT_WIDTH}i/0'
     else:
-        # This is a good projection to use since it preserves area
-        proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
-                                         np.mean(region[2:4]),
-                                         region[2], region[3],
-                                         PREVIEW_PLOT_WIDTH)
+        # Albers
+        proj = _albers(region, PREVIEW_PLOT_WIDTH)
 
     fig.basemap(projection=proj, region=region, frame='af')
     if grid.UTM:
@@ -585,6 +579,28 @@ def plot_dem(dem, external_file):
 
     # Show figure
     fig.show(method='external')
+
+
+def _albers(region, width):
+    """
+    Create an
+    `Albers conic equal area projection <https://docs.generic-mapping-tools.org/6.0/gmt.html#jb-full>`__
+    for use with PyGMT.
+
+    Args:
+        region (list): PLotting region as [xmin, xmax, ymin, ymax] in degrees
+        width (int or float): Plot width in inches
+
+    Returns:
+        str: The formatted projection string
+    """
+
+    # This is a good projection to use since it preserves area
+    proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
+                                     np.mean(region[2:4]),
+                                     region[2], region[3],
+                                     width)
+    return proj
 
 
 # Subclass ConciseDateFormatter (modifies __init__() and set_axis() methods)
