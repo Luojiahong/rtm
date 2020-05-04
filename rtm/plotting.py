@@ -8,6 +8,7 @@ from .stack import get_peak_coordinates
 import utm
 from datetime import datetime
 from xarray import DataArray
+import os
 import pygmt
 from . import RTMWarning
 
@@ -26,6 +27,9 @@ SYMBOL_PEN = 0.75  # [pt]
 
 # Fraction of total map extent (width) to use for scalebar
 SCALE_FRAC = 1/10
+
+# Width of grid and DEM preview plots
+PREVIEW_PLOT_WIDTH = 6  # [in]
 
 # Define some conversion factors
 KM2M = 1000    # [m/km]
@@ -459,7 +463,8 @@ def plot_grid_preview(grid):
     Plot a preview of the grid of trial sources.
 
     Args:
-        grid (:class:`~xarray.DataArray`): Grid to plot
+        grid (:class:`~xarray.DataArray`): Grid to plot, e.g. output of
+            :func:`~rtm.grid.define_grid`
     """
 
     # Make the grid pixel-registered for GMT
@@ -477,16 +482,15 @@ def plot_grid_preview(grid):
     region = [np.floor(x_new.min()), np.ceil(x_new.max()),
               np.floor(y_new.min()), np.ceil(y_new.max())]
 
-    plot_width = 6  # [inches]
     if grid.UTM:
         # Just Cartesian
-        proj = f'X{plot_width}i/0'
+        proj = f'X{PREVIEW_PLOT_WIDTH}i/0'
     else:
         # This is a good projection to use since it preserves area
         proj = 'B{}/{}/{}/{}/{}i'.format(np.mean(region[0:2]),
                                          np.mean(region[2:4]),
                                          region[2], region[3],
-                                         plot_width)
+                                         PREVIEW_PLOT_WIDTH)
 
     fig.basemap(projection=proj, region=region, frame='af')
     if grid.UTM:
@@ -513,6 +517,71 @@ def plot_grid_preview(grid):
 
     # Add a legend
     fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
+
+    # Show figure
+    fig.show(method='external')
+
+
+def plot_dem(dem, external_file):
+    """
+    Plot a DEM hillshade.
+
+    Args:
+        dem (:class:`~xarray.DataArray`): Projected DEM, e.g. output of
+            :func:`~rtm.grid.produce_dem`
+        external_file (str): Filename of external DEM file used. `None` if
+            SRTM data was used
+    """
+
+    proj = f'X{PREVIEW_PLOT_WIDTH}i/0'
+
+    x = dem.x.values
+    y = dem.y.values
+
+    # This will perfectly trim axis to DEM extent, considering registration
+    region = [np.floor(x.min()) - dem.spacing / 2,
+              np.ceil(x.max()) + dem.spacing / 2,
+              np.floor(y.min()) - dem.spacing / 2,
+              np.ceil(y.max()) + dem.spacing / 2]
+
+    fig = pygmt.Figure()
+
+    # Create title
+    if external_file:
+        source_label = os.path.abspath(external_file)
+    else:
+        source_label = '1 arc-second SRTM data'
+    title = '{}, resampled to {} m spacing'.format(source_label,
+                                                   dem.spacing)
+
+    # Create basemap
+    fig.basemap(projection=proj, region=region,
+                frame=['af', f'+t"{title}"'])
+    fig.basemap(frame=['SW', 'xa+l"UTM easting (m)"',
+                       'ya+l"UTM northing (m)"'])
+
+    # Plot hillshade
+    with pygmt.helpers.GMTTempFile() as tmp_grd:
+        session = pygmt.clib.Session()
+        session.create('')
+        with session.virtualfile_from_grid(dem) as dem_file:
+            session.call_module('grdgradient',
+                                f'{dem_file} -A-45 -Nt1- -G{tmp_grd.name}')
+        session.destroy()
+        fig.grdimage(dem, cmap='magma', E=300, Q=True, I=tmp_grd.name)
+
+    # Plot the center of the grid
+    x_0, y_0, *_ = utm.from_latlon(*dem.grid_center[::-1])
+    fig.plot(x_0, y_0, style=f'c{SYMBOL_SIZE}i', color='limegreen',
+             pen=f'{SYMBOL_PEN}p', label='"Grid center"')
+
+    # Add a legend
+    fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
+
+    # Add a colorbar
+    aspect_ratio = (region[3] - region[2]) / (region[1] - region[0])
+    position = f'JMR+o0.9i/0+w{PREVIEW_PLOT_WIDTH * aspect_ratio}i/0.15i'
+    fig.colorbar(position=position, frame=['a', 'x+l"Elevation (m)"'])
 
     # Show figure
     fig.show(method='external')

@@ -9,23 +9,10 @@ import os
 import subprocess
 import warnings
 from .travel_time import celerity_travel_time, fdtd_travel_time
-import pygmt
 from .stack import calculate_semblance
-from .plotting import plot_grid_preview
+from .plotting import plot_grid_preview, plot_dem
 from . import RTMWarning
 
-
-# Set universal GMT font size
-session = pygmt.clib.Session()
-session.create('')
-session.call_module('gmtset', 'FONT=11p')
-session.destroy()
-
-# Marker size for PyGMT
-SYMBOL_SIZE = 0.1  # [inches]
-
-# Symbol pen size thickness
-SYMBOL_PEN = 0.75  # [pt]
 
 gdal.UseExceptions()  # Allows for more Pythonic errors from GDAL
 
@@ -317,64 +304,10 @@ def produce_dem(grid, external_file=None, plot_output=True, output_file=False):
 
     print('Done')
 
+    # Plot DEM, if specified
     if plot_output:
-
         print('Generating DEM hillshade plot...')
-
-        plot_width = 6  # [inches]
-        proj = f'X{plot_width}i/0'
-
-        x = dem.x.values
-        y = dem.y.values
-
-        # This will perfectly trim axis to DEM extent, considering registration
-        region = [np.floor(x.min()) - dem.spacing / 2,
-                  np.ceil(x.max()) + dem.spacing / 2,
-                  np.floor(y.min()) - dem.spacing / 2,
-                  np.ceil(y.max()) + dem.spacing / 2]
-
-        fig = pygmt.Figure()
-
-        # Create title
-        if external_file:
-            source_label = os.path.abspath(external_file)
-        else:
-            source_label = '1 arc-second SRTM data'
-        title = '{}, resampled to {} m spacing'.format(source_label,
-                                                       dem.spacing)
-
-        # Create basemap
-        fig.basemap(projection=proj, region=region,
-                    frame=['af', f'+t"{title}"'])
-        fig.basemap(frame=['SW', 'xa+l"UTM easting (m)"',
-                           'ya+l"UTM northing (m)"'])
-
-        # Plot hillshade
-        with pygmt.helpers.GMTTempFile() as tmp_grd:
-            session = pygmt.clib.Session()
-            session.create('')
-            with session.virtualfile_from_grid(dem) as dem_file:
-                session.call_module('grdgradient',
-                                    f'{dem_file} -A-45 -Nt1- -G{tmp_grd.name}')
-            session.destroy()
-            fig.grdimage(dem, cmap='magma', E=300, Q=True, I=tmp_grd.name)
-
-        # Plot the center of the grid
-        x_0, y_0, *_ = utm.from_latlon(*dem.grid_center[::-1])
-        fig.plot(x_0, y_0, style=f'c{SYMBOL_SIZE}i', color='limegreen',
-                 pen=f'{SYMBOL_PEN}p', label='"Grid center"')
-
-        # Add a legend
-        fig.legend(position='JTL+jTL+o0.2i', box='+gwhite+p1p')
-
-        # Add a colorbar
-        aspect_ratio = (region[3] - region[2]) / (region[1] - region[0])
-        position = f'JMR+o0.9i/0+w{plot_width * aspect_ratio}i/0.15i'
-        fig.colorbar(position=position, frame=['a', 'x+l"Elevation (m)"'])
-
-        # Show figure
-        fig.show(method='external')
-
+        plot_dem(dem, external_file)
         print('Done')
 
     return dem
