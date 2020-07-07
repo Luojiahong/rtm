@@ -4,18 +4,13 @@ channels:
   - defaults
 dependencies:
   - gdal
-  - gmt=6.0.0  # Because PyGMT requires GMT 6.0.0 or higher
+  - gmt>=6.1.0  # Because 6.1.0 fixes some PyGMT-relevant bugs
   - ipython
-  - libnetcdf=4.7.3  # Because 4.7.4 causes "netcdf-4 operation on netcdf-3 file" error
-  - netcdf4
-  - numpy
   - obspy
-  - packaging
-  - pandas
   - pip
+  - pygmt
   - utm
   - xarray
   - pip:
-    - pygmt==0.1.0  # Because 0.1.0 is the first stable release
     - git+https://github.com/uafgeotools/waveform_collection.git
     - -e .
