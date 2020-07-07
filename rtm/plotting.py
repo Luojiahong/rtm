@@ -14,10 +14,7 @@ from . import RTMWarning
 
 
 # Set universal GMT font size
-session = pygmt.clib.Session()
-session.create('')
-session.call_module('gmtset', 'FONT=11p')
-session.destroy()
+pygmt.config(FONT='11p')
 
 # Marker size for PyGMT
 SYMBOL_SIZE = 0.1  # [inches]
@@ -555,14 +552,7 @@ def _plot_dem(dem, external_file):
                        'ya+l"UTM northing (m)"'])
 
     # Plot hillshade
-    with pygmt.helpers.GMTTempFile() as tmp_grd:
-        session = pygmt.clib.Session()
-        session.create('')
-        with session.virtualfile_from_grid(dem) as dem_file:
-            session.call_module('grdgradient',
-                                f'{dem_file} -A-45 -Nt1- -G{tmp_grd.name}')
-        session.destroy()
-        fig.grdimage(dem, cmap='magma', E=300, Q=True, I=tmp_grd.name)
+    fig.grdimage(dem, cmap='magma', E=300, Q=True, shading='+d')
 
     # Plot the center of the grid
     x_0, y_0, *_ = utm.from_latlon(*dem.grid_center[::-1])
